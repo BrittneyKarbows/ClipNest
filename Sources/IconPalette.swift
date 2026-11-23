@@ -1,5 +1,14 @@
 import AppKit
 
+extension NSImage {
+    // Read bundled artwork directly so an OS icon cache cannot show an older release.
+    static let clipNestIcon: NSImage = {
+        if let url = Bundle.main.url(forResource: "AppIcon-BlackWhite", withExtension: "icns"),
+           let image = NSImage(contentsOf: url) { return image }
+        return NSImage(named: NSImage.applicationIconName) ?? NSImage()
+    }()
+}
+
 struct IconPalette {
     let background: NSColor
     let foreground: NSColor

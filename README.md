@@ -1,11 +1,33 @@
-<p align="center"><img src="Resources/AppIcon.png" width="112" alt="剪藏 ClipNest 图标"></p>
-<h1 align="center">剪藏 · ClipNest</h1>
+<p align="center">
+  <img src="Resources/AppIcon.png" width="180" height="180" alt="剪藏 ClipNest 应用图标">
+</p>
+
+<h1 align="center">剪藏（ClipNest）</h1>
+
 <p align="center">随手复制，好好收藏。</p>
-<p align="center">原生 macOS 剪贴板管理工具 · 中文界面 · 本地存储 · MIT</p>
+
+<p align="center">
+  <a href="https://github.com/BrittneyKarbows/ClipNest/releases"><img src="https://img.shields.io/badge/version-1.2.1-333333?style=flat-square" alt="version 1.2.1"></a>
+  <a href="#安装与开始使用"><img src="https://img.shields.io/badge/macOS-13.0%2B-000000?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS 13.0 或更新版本"></a>
+  <a href="#安装与开始使用"><img src="https://img.shields.io/badge/arch-Apple%20Silicon-6E56CF?style=flat-square" alt="Apple Silicon arm64"></a>
+  <a href="#从源码构建"><img src="https://img.shields.io/badge/Swift-SwiftUI-F05138?style=flat-square&amp;logo=swift&amp;logoColor=white" alt="Swift / SwiftUI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-007EC6?style=flat-square" alt="MIT 许可证"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/BrittneyKarbows/ClipNest/releases">下载应用</a> ·
+  <a href="CHANGELOG.md">更新日志</a> ·
+  <a href="#从源码构建">构建说明</a> ·
+  <a href="mailto:BrittneyKarbows@gmail.com">反馈问题</a>
+</p>
+
+---
 
 剪藏会记录你复制过的文字、链接、图片与文件位置。通过全局快捷键呼出底部卡片面板，搜索历史、收藏常用内容，再把需要的记录粘贴回正在使用的应用。
 
-当前版本 **1.2.0**，提供 **Apple Silicon（arm64）** 安装包，要求 **macOS 13 或更新版本**。使用 Swift、SwiftUI、AppKit 和 SQLite 开发，无第三方运行依赖。
+当前版本 **1.2.1**，提供 **Apple Silicon（arm64）** 安装包，要求 **macOS 13 或更新版本**。使用 Swift、SwiftUI、AppKit 和 SQLite 开发，无第三方运行依赖。
+
+1.2.1 启用全新黑白剪贴板图标：夹扣、纸张与叠页清晰表达剪贴板和历史记录；应用、面板、设置和仓库展示统一使用同一图标。
 
 ## 功能一览
 
@@ -26,7 +48,7 @@
 
 ## 安装与开始使用
 
-1. 从本仓库 **Releases** 下载 `ClipNest-1.2.0-arm64.zip` 并解压。
+1. 从本仓库 **Releases** 下载 `ClipNest-1.2.1-arm64.zip` 并解压。
 2. 将 `ClipNest.app` 拖入“应用程序”，然后启动。
 3. 在任意应用中复制内容，按默认快捷键 **⌘⇧V** 打开剪藏。
 4. 单击卡片选择记录，按**回车**或点击卡片底部的回车箭头粘贴。
@@ -137,7 +159,7 @@
 
 ## 版本与反馈
 
-查看 [更新日志](CHANGELOG.md) 和 [1.2.0 发布说明](docs/RELEASE-v1.2.0.md)。
+查看 [更新日志](CHANGELOG.md) 和 [1.2.1 发布说明](docs/RELEASE-v1.2.1.md)。
 
 开发者：**BrittneyKarbows**  
 邮箱：[BrittneyKarbows@gmail.com](mailto:BrittneyKarbows@gmail.com)  

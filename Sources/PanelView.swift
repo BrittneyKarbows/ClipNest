@@ -76,10 +76,8 @@ struct PanelView: View {
     }
     private var header: some View {
         HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 9).fill(LinearGradient(colors: [.orange, .accent], startPoint: .topLeading, endPoint: .bottomTrailing)).frame(width: 33, height: 33)
-                Image(systemName: "doc.on.clipboard.fill").font(.system(size: 18)).foregroundColor(.white)
-            }
+            Image(nsImage: NSImage.clipNestIcon)
+                .resizable().scaledToFit().frame(width: 36, height: 36)
             Text("剪藏").font(.system(size: 21, weight: .semibold))
             Text("随手复制，好好收藏").font(.system(size: 11)).foregroundColor(.secondary).padding(.leading, 4)
             Spacer()
@@ -139,7 +137,7 @@ private final class SourceAppIconCache {
             clip.bundleID.isEmpty ? $0.localizedName == clip.source : $0.bundleIdentifier == clip.bundleID
         }
         let url = running?.bundleURL ?? (clip.bundleID.isEmpty ? nil : workspace.urlForApplication(withBundleIdentifier: clip.bundleID))
-        let image = url.map { workspace.icon(forFile: $0.path) } ?? workspace.icon(for: .application)
+        let image = clip.bundleID == Bundle.main.bundleIdentifier ? NSImage.clipNestIcon : (url.map { workspace.icon(forFile: $0.path) } ?? workspace.icon(for: .application))
         let appearance = Appearance(image: image, hasApp: url != nil)
         images.setObject(appearance, forKey: key)
         return appearance

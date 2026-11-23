@@ -48,6 +48,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        NSApp.applicationIconImage = .clipNestIcon
         Preferences.shared.$theme.removeDuplicates().sink { mode in NSApp.appearance = mode.appearance }.store(in: &subscriptions)
         installMenu()
         rememberExternalApplication(NSWorkspace.shared.frontmostApplication)

@@ -65,7 +65,7 @@ struct SettingsView: View {
     @State private var retentionConfirmation = false
     @State private var pendingRetention = HistoryRetention.forever
     @State private var pendingExpirationCount = 0
-    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.0" }
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.1" }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -100,7 +100,7 @@ struct SettingsView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().scaledToFit().frame(width: 36, height: 36)
+                Image(nsImage: NSImage.clipNestIcon).resizable().scaledToFit().frame(width: 36, height: 36)
                 VStack(alignment: .leading, spacing: 3) { Text("剪藏").font(.system(size: 21, weight: .semibold)); Text("偏好设置").font(.system(size: 10)).foregroundColor(.secondary) }
             }.padding(.horizontal, 20).padding(.top, 30).padding(.bottom, 28)
             VStack(spacing: 5) {
@@ -278,7 +278,7 @@ struct SettingsView: View {
         VStack(spacing: 16) {
             SettingsCard("关于剪藏") {
                 HStack(spacing: 15) {
-                    Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().scaledToFit().frame(width: 64, height: 64)
+                    Image(nsImage: NSImage.clipNestIcon).resizable().scaledToFit().frame(width: 64, height: 64)
                     VStack(alignment: .leading, spacing: 6) { Text("剪藏 · ClipNest").font(.system(size: 20, weight: .semibold)); Text("版本 \(version)").font(.system(size: 12)).foregroundColor(.secondary); Text("随手复制，好好收藏。").font(.system(size: 12)).foregroundColor(.secondary) }
                 }
                 Divider()

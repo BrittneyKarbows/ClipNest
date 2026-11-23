@@ -26,8 +26,9 @@ ClipNest/
 │   └── SettingsView.swift       # 六类设置与快捷键录制
 ├── Resources/
 │   ├── Info.plist
-│   ├── AppIcon.icns
+│   ├── AppIcon-BlackWhite.icns
 │   ├── AppIcon.png
+│   ├── AppIcon-source.png
 │   └── GenerateIcon.swift
 ├── Tests/
 │   ├── main.swift
@@ -96,3 +97,13 @@ CLIPNEST_SIGN_IDENTITY='你的实际签名身份名称' ./build.sh ./dist/ClipNe
 ## 发布
 
 更新 `Resources/Info.plist` 的版本与构建号，运行两组检查，再构建和校验签名。发布流程见 [GitHub 发布指南](PUBLISHING.md)。
+
+## 重新生成图标
+
+`Resources/AppIcon-source.png` 是选定的黑白原始图稿；`AppIcon.png` 是带透明外边距的 1024 像素 macOS 图标，`AppIcon-BlackWhite.icns` 提供多分辨率版本。图标打包脚本保留原图的夹扣、纸张和叠页结构，并按 macOS 圆角底板裁切外围背景。
+
+```sh
+xcrun swift Resources/GenerateIcon.swift .build/icon-renders
+```
+
+脚本生成 16、32、64、128、256、512 和 1024 像素 PNG；使用这些尺寸组成标准 `.iconset` 后，可通过 macOS 的 `iconutil -c icns` 生成 ICNS。打包完成后重新运行 `build.sh`，确保更新应用签名。

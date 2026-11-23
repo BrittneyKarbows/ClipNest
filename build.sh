@@ -8,6 +8,6 @@ xcrun swiftc -swift-version 5 -O -module-cache-path "$BUILD/cache" -target arm64
     "$ROOT"/Sources/*.swift -o "$DEST/Contents/MacOS/ClipNest" \
     -framework Cocoa -framework SwiftUI -framework Carbon -framework ApplicationServices -framework ServiceManagement -lsqlite3
 cp "$ROOT/Resources/Info.plist" "$DEST/Contents/Info.plist"
-cp "$ROOT/Resources/AppIcon.icns" "$DEST/Contents/Resources/AppIcon.icns"
+cp "$ROOT/Resources/AppIcon-BlackWhite.icns" "$DEST/Contents/Resources/AppIcon-BlackWhite.icns"
 codesign --force --sign "${CLIPNEST_SIGN_IDENTITY:--}" --identifier com.clipnest.mac "$DEST"
 echo "Built: $DEST"
