@@ -7,7 +7,7 @@
 <p align="center">随手复制，好好收藏。</p>
 
 <p align="center">
-  <a href="https://github.com/BrittneyKarbows/ClipNest/releases"><img src="https://img.shields.io/badge/version-1.2.1-333333?style=flat-square" alt="version 1.2.1"></a>
+  <a href="https://github.com/BrittneyKarbows/ClipNest/releases"><img src="https://img.shields.io/badge/version-1.3.0-333333?style=flat-square" alt="version 1.3.0"></a>
   <a href="#安装与开始使用"><img src="https://img.shields.io/badge/macOS-13.0%2B-000000?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS 13.0 或更新版本"></a>
   <a href="#安装与开始使用"><img src="https://img.shields.io/badge/arch-Apple%20Silicon-6E56CF?style=flat-square" alt="Apple Silicon arm64"></a>
   <a href="#从源码构建"><img src="https://img.shields.io/badge/Swift-SwiftUI-F05138?style=flat-square&amp;logo=swift&amp;logoColor=white" alt="Swift / SwiftUI"></a>
@@ -25,9 +25,9 @@
 
 剪藏会记录你复制过的文字、链接、图片与文件位置。通过全局快捷键呼出底部卡片面板，搜索历史、收藏常用内容，再把需要的记录粘贴回正在使用的应用。
 
-当前版本 **1.2.1**，提供 **Apple Silicon（arm64）** 安装包，要求 **macOS 13 或更新版本**。使用 Swift、SwiftUI、AppKit 和 SQLite 开发，无第三方运行依赖。
+当前版本 **1.3.0**，提供 **Apple Silicon（arm64）** 安装包，要求 **macOS 13 或更新版本**。使用 Swift、SwiftUI、AppKit 和 SQLite 开发，无第三方运行依赖。
 
-1.2.1 启用全新黑白剪贴板图标：夹扣、纸张与叠页清晰表达剪贴板和历史记录；应用、面板、设置和仓库展示统一使用同一图标。
+1.3.0 将浅色界面调整为中性黑白灰，默认使用黑白强调色；在“设置 → 外观 → 强调色”中可选择黑白、蓝、紫、绿、玫红或青色，用于导航、操作按钮和卡片选中边框，立即生效并保存。来源 App 的图标及专属色条仍用于区分内容来源。
 
 ## 功能一览
 
@@ -41,15 +41,15 @@
 | 图片预览 | 支持剪贴板图片；单张本地图片文件可后台读取并缓存预览 |
 | 直接粘贴 | 授权后可粘贴回原应用，也可仅复制后手动按 ⌘V |
 | 自定义快捷键 | 录制呼出组合键、校验组合键并处理注册冲突，可恢复默认 |
-| 外观切换 | 跟随系统、浅色、深色三种模式，面板和设置窗口同步更新 |
+| 外观切换 | 跟随系统、浅色、深色三种模式；六种可选强调色，默认黑白，面板和设置窗口同步更新 |
 | 历史管理 | 设置数量上限和保留时间，支持手动清空普通历史 |
 | 运行选项 | 登录 Mac 时启动、显示或隐藏菜单栏图标、暂停记录 |
 | 应用排除 | 选择不记录的应用，也可输入 Bundle ID |
 
 ## 安装与开始使用
 
-1. 从本仓库 **Releases** 下载 `ClipNest-1.2.1-arm64.zip` 并解压。
-2. 将 `ClipNest.app` 拖入“应用程序”，然后启动。
+1. 从本仓库 **Releases** 下载 `ClipNest-1.3.0-arm64.dmg`，双击打开。
+2. 在剪贴卡片主题安装窗口中，将左侧 `ClipNest.app` 拖到右侧“应用程序”，完成后从“应用程序”启动。
 3. 在任意应用中复制内容，按默认快捷键 **⌘⇧V** 打开剪藏。
 4. 单击卡片选择记录，按**回车**或点击卡片底部的回车箭头粘贴。
 5. 需要直接粘贴时，在 **设置 → 快捷键与粘贴 → 直接粘贴权限** 查看授权状态，并按提示为当前应用添加辅助功能权限。
@@ -80,7 +80,7 @@
 | 分类 | 设置内容 |
 | --- | --- |
 | 通用 | 登录启动、菜单栏图标 |
-| 外观 | 跟随系统、浅色、深色 |
+| 外观 | 跟随系统、浅色、深色；黑白、蓝、紫、绿、玫红、青六种强调色 |
 | 快捷键与粘贴 | 呼出快捷键、双击粘贴、操作提示、当前构建的直接粘贴授权状态 |
 | 历史记录 | 暂停记录、数量上限、自动清理、本地数据位置及手动清空 |
 | 隐私 | 排除应用列表、选择应用、按 Bundle ID 添加 |
@@ -135,7 +135,7 @@
 ./test-paste.sh
 ```
 
-当前版本已通过 **102 项核心检查**与 **26 项直接粘贴状态检查**。测试使用临时数据库、独立命名剪贴板或模拟环境，不读写系统通用剪贴板，也不会向真实应用发送粘贴操作。登录启动、跨应用粘贴和不同 macOS 版本的行为仍需要实机验证。
+当前版本已通过 **123 项核心检查**与 **26 项直接粘贴状态检查**。测试使用临时数据库、独立命名剪贴板或模拟环境，不读写系统通用剪贴板，也不会向真实应用发送粘贴操作。强调色检查覆盖旧偏好迁移、选择保存、无效值回退和明暗模式配色的对比度；登录启动、跨应用粘贴和不同 macOS 版本的行为仍需要实机验证。
 
 项目结构、测试范围和签名说明见 [开发文档](docs/DEVELOPMENT.md)。
 
@@ -159,7 +159,7 @@
 
 ## 版本与反馈
 
-查看 [更新日志](CHANGELOG.md) 和 [1.2.1 发布说明](docs/RELEASE-v1.2.1.md)。
+查看 [更新日志](CHANGELOG.md) 和 [1.3.0 发布说明](docs/RELEASE-v1.3.0.md)。
 
 开发者：**BrittneyKarbows**  
 邮箱：[BrittneyKarbows@gmail.com](mailto:BrittneyKarbows@gmail.com)  

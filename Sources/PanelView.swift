@@ -7,12 +7,12 @@ extension Color {
         Color(nsColor: NSColor(name: nil) { appearance in appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light })
     }
     static let ink = Color(nsColor: .labelColor)
-    static let paper = adaptive(NSColor(srgbRed: 0.97, green: 0.96, blue: 0.93, alpha: 1), NSColor(srgbRed: 0.105, green: 0.11, blue: 0.125, alpha: 1))
+    static let paper = adaptive(NSColor(white: 0.965, alpha: 1), NSColor(srgbRed: 0.105, green: 0.11, blue: 0.125, alpha: 1))
     static let card = adaptive(.white, NSColor(srgbRed: 0.16, green: 0.17, blue: 0.19, alpha: 1))
     static let field = adaptive(NSColor.white.withAlphaComponent(0.75), NSColor.white.withAlphaComponent(0.07))
     static let chrome = adaptive(NSColor.white.withAlphaComponent(0.35), NSColor.white.withAlphaComponent(0.025))
     static let edge = adaptive(NSColor.white.withAlphaComponent(0.8), NSColor.white.withAlphaComponent(0.10))
-    static let accent = adaptive(NSColor(srgbRed: 0.91, green: 0.40, blue: 0.13, alpha: 1), NSColor(srgbRed: 1, green: 0.60, blue: 0.32, alpha: 1))
+    static var accent: Color { Color(nsColor: Preferences.shared.accentPalette.adaptiveColor) }
 }
 
 struct PanelView: View {
@@ -67,7 +67,7 @@ struct PanelView: View {
             }
             footer
         }
-        .foregroundColor(.ink).background(Color.paper)
+        .foregroundColor(.ink).background(Color.paper).tint(.accent).accentColor(.accent)
         .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(Color.edge, lineWidth: 1))
         .onChange(of: state.focusRequest) { _ in searchFocused = true }
@@ -108,7 +108,8 @@ struct PanelView: View {
     }
     private var footer: some View {
         HStack(spacing: 7) {
-            Circle().fill(preferences.paused ? Color.orange : Color(red: 0.38, green: 0.57, blue: 0.42)).frame(width: 5, height: 5)
+            Image(systemName: preferences.paused ? "pause.circle.fill" : "circle.fill")
+                .font(.system(size: preferences.paused ? 9 : 5)).foregroundColor(.secondary)
             Text(state.message ?? (preferences.paused ? "记录已暂停" : "仅保存在这台 Mac")).lineLimit(2).help(state.message ?? "剪贴板历史仅保存在本机")
             if state.message != nil { Button { state.message = nil } label: { Image(systemName: "xmark").font(.system(size: 8)) }.buttonStyle(.plain) }
             Spacer()
@@ -145,6 +146,7 @@ private final class SourceAppIconCache {
 }
 
 struct ClipCard: View {
+    @ObservedObject private var preferences = Preferences.shared
     let clip: Clip
     let index: Int
     let selected: Bool

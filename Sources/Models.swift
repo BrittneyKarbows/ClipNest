@@ -10,6 +10,38 @@ enum ThemeMode: String, CaseIterable, Identifiable {
     var appearance: NSAppearance? { switch self { case .system: return nil; case .light: return NSAppearance(named: .aqua); case .dark: return NSAppearance(named: .darkAqua) } }
 }
 
+enum AccentPalette: String, CaseIterable, Identifiable {
+    case monochrome, blue, purple, green, rose, teal
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .monochrome: return "黑白"
+        case .blue: return "蓝色"
+        case .purple: return "紫色"
+        case .green: return "绿色"
+        case .rose: return "玫红"
+        case .teal: return "青色"
+        }
+    }
+    func color(isDark: Bool) -> NSColor {
+        let rgb: (CGFloat, CGFloat, CGFloat)
+        switch self {
+        case .monochrome: rgb = isDark ? (0.93, 0.93, 0.93) : (0.12, 0.12, 0.12)
+        case .blue: rgb = isDark ? (0.42, 0.68, 1.0) : (0.13, 0.39, 0.88)
+        case .purple: rgb = isDark ? (0.73, 0.58, 1.0) : (0.48, 0.25, 0.78)
+        case .green: rgb = isDark ? (0.40, 0.80, 0.57) : (0.10, 0.45, 0.30)
+        case .rose: rgb = isDark ? (1.0, 0.55, 0.71) : (0.72, 0.22, 0.40)
+        case .teal: rgb = isDark ? (0.35, 0.79, 0.83) : (0.0, 0.44, 0.49)
+        }
+        return NSColor(srgbRed: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+    }
+    var adaptiveColor: NSColor {
+        NSColor(name: nil) { appearance in
+            self.color(isDark: appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua)
+        }
+    }
+}
+
 enum HistoryRetention: String, CaseIterable, Identifiable {
     case forever, week, month, threeMonths, sixMonths, year
     var id: String { rawValue }
@@ -121,6 +153,7 @@ final class Preferences: ObservableObject {
     @Published var showMenuBarIcon: Bool { didSet { defaults.set(showMenuBarIcon, forKey: "showMenuBarIcon") } }
     @Published var doubleClickToPaste: Bool { didSet { defaults.set(doubleClickToPaste, forKey: "doubleClickToPaste") } }
     @Published var theme: ThemeMode { didSet { defaults.set(theme.rawValue, forKey: "theme") } }
+    @Published var accentPalette: AccentPalette { didSet { defaults.set(accentPalette.rawValue, forKey: "accentPalette") } }
     @Published var historyRetention: HistoryRetention { didSet { defaults.set(historyRetention.rawValue, forKey: "historyRetention") } }
     @Published private(set) var shortcut: KeyboardShortcut
     func saveShortcut(_ value: KeyboardShortcut) {
@@ -136,6 +169,7 @@ final class Preferences: ObservableObject {
         showMenuBarIcon = defaults.object(forKey: "showMenuBarIcon") as? Bool ?? true
         doubleClickToPaste = defaults.object(forKey: "doubleClickToPaste") as? Bool ?? false
         theme = ThemeMode(rawValue: defaults.string(forKey: "theme") ?? "") ?? .system
+        accentPalette = AccentPalette(rawValue: defaults.string(forKey: "accentPalette") ?? "") ?? .monochrome
         historyRetention = HistoryRetention(rawValue: defaults.string(forKey: "historyRetention") ?? "") ?? .forever
         if let data = defaults.data(forKey: "panelShortcut"), let saved = try? JSONDecoder().decode(KeyboardShortcut.self, from: data), saved.validationError == nil { shortcut = saved }
         else { shortcut = .defaultShortcut }

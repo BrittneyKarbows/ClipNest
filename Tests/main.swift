@@ -54,6 +54,28 @@ expect(ThemeMode.system.appearance == nil && ThemeMode.light.appearance?.name ==
 defaults.set("invalid-theme", forKey: "theme"); defaults.set("invalid-retention", forKey: "historyRetention")
 expect(Preferences(defaults: defaults).theme == .system && Preferences(defaults: defaults).historyRetention == .forever, "Invalid stored theme and retention safely fall back without deleting history")
 preferences.theme = .system; preferences.historyRetention = .forever
+expect(preferences.accentPalette == .monochrome, "Existing preferences default to monochrome without changing appearance mode")
+for palette in AccentPalette.allCases {
+    preferences.accentPalette = palette
+    let restored = Preferences(defaults: defaults)
+    expect(restored.accentPalette == palette, "Accent choice survives restart: \(palette.rawValue)")
+}
+expect(Preferences(defaults: defaults).theme == .system && Preferences(defaults: defaults).historyRetention == .forever && Preferences(defaults: defaults).limit == preferences.limit, "Changing accent preserves theme, retention and history limit")
+defaults.set("unknown-palette", forKey: "accentPalette")
+expect(Preferences(defaults: defaults).accentPalette == .monochrome, "Unknown accent preference safely falls back to monochrome")
+preferences.accentPalette = .monochrome
+func accentLuminance(_ color: NSColor) -> CGFloat {
+    let rgb = color.usingColorSpace(.sRGB)!
+    func linear(_ x: CGFloat) -> CGFloat { x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4) }
+    return 0.2126 * linear(rgb.redComponent) + 0.7152 * linear(rgb.greenComponent) + 0.0722 * linear(rgb.blueComponent)
+}
+for palette in AccentPalette.allCases {
+    let lightContrast = 1.05 / (accentLuminance(palette.color(isDark: false)) + 0.05)
+    let darkBackground = NSColor(srgbRed: 0.16, green: 0.17, blue: 0.19, alpha: 1)
+    let darkContrast = (accentLuminance(palette.color(isDark: true)) + 0.05) / (accentLuminance(darkBackground) + 0.05)
+    expect(lightContrast >= 4.5, "Light accent remains readable on white: \(palette.rawValue)")
+    expect(darkContrast >= 4.5, "Dark accent remains readable on cards: \(palette.rawValue)")
+}
 expect(!preferences.doubleClickToPaste, "Double-click paste defaults off to avoid accidental dismissal")
 var hotKeyGate = HotKeyPressGate()
 expect(hotKeyGate.press() && !hotKeyGate.press(), "Holding a global shortcut only opens the panel once")

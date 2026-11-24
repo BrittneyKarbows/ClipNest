@@ -56,6 +56,7 @@ struct SettingsView: View {
     @ObservedObject var store: ClipStore
     let controller: AppController
     @ObservedObject private var preferences = Preferences.shared
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var login = LoginItemController()
     @StateObject private var pastePermission = PastePermissionStatus()
     @State private var category: SettingsCategory = .general
@@ -65,7 +66,7 @@ struct SettingsView: View {
     @State private var retentionConfirmation = false
     @State private var pendingRetention = HistoryRetention.forever
     @State private var pendingExpirationCount = 0
-    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.1" }
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.3.0" }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -84,7 +85,7 @@ struct SettingsView: View {
                     }.padding(26).frame(maxWidth: .infinity, alignment: .leading)
                 }.id(category)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
-        }.frame(width: 860, height: 640).background(Color.paper).foregroundColor(.ink).tint(.accent)
+        }.frame(width: 860, height: 640).background(Color.paper).foregroundColor(.ink).tint(.accent).accentColor(.accent)
         .onAppear { login.refresh(); pastePermission.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in login.refresh(); pastePermission.refresh() }
         .alert("清空未收藏的历史记录？", isPresented: $clearConfirmation) {
@@ -167,21 +168,52 @@ struct SettingsView: View {
                 }
                 Text(preferences.theme == .system ? "已跟随系统：macOS 的浅色与深色外观变化时，剪藏会自动切换。" : "已选择\(preferences.theme.label)外观，面板和设置窗口会立即更新。").font(.system(size: 11)).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            SettingsCard("卡片配色") {
+            SettingsCard("强调色") {
+                Text("默认黑白。选择喜欢的颜色，用于导航选中、操作按钮和卡片边框。").font(.system(size: 11)).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    ForEach(AccentPalette.allCases) { palette in accentOption(palette) }
+                }
+                HStack(spacing: 9) {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(.accent)
+                    Text("选中效果").font(.system(size: 12, weight: .medium))
+                    Spacer()
+                    Text(preferences.accentPalette.label).font(.system(size: 11)).foregroundColor(.secondary)
+                }.padding(12).background(Color.paper).cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accent, lineWidth: 2))
+            }
+            SettingsCard("来源配色") {
                 Label("来源 App 的专属色条会保留", systemImage: "paintpalette").font(.system(size: 13))
                 Text("卡片正文、搜索框和窗口背景会随外观调整；图标和顶部色条帮助你辨认来源。").font(.system(size: 11)).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
+    private func accentOption(_ palette: AccentPalette) -> some View {
+        let selected = preferences.accentPalette == palette
+        return Button { preferences.accentPalette = palette } label: {
+            VStack(spacing: 8) {
+                Circle().fill(Color(nsColor: palette.adaptiveColor)).frame(width: 25, height: 25)
+                    .overlay {
+                        if selected { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(colorScheme == .dark ? .black : .white) }
+                    }
+                Text(palette.label).font(.system(size: 11, weight: selected ? .semibold : .regular)).foregroundColor(.ink)
+            }.frame(maxWidth: .infinity).padding(.vertical, 10)
+                .background(selected ? Color.accent.opacity(0.07) : Color.clear).cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.accent : Color.ink.opacity(0.08), lineWidth: selected ? 1.5 : 1))
+        }.buttonStyle(.plain).accessibilityLabel("\(palette.label)强调色")
+            .accessibilityValue(selected ? "已选择" : "未选择").accessibilityIdentifier("accent-\(palette.rawValue)")
+    }
     private func themePreview(_ mode: ThemeMode) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 6).fill(mode == .dark ? Color(red: 0.12, green: 0.13, blue: 0.15) : Color(red: 0.95, green: 0.94, blue: 0.91))
+            RoundedRectangle(cornerRadius: 6).fill(mode == .dark ? Color(white: 0.13) : Color(white: 0.94))
             if mode == .system { HStack(spacing: 0) { Color.clear; Color(red: 0.12, green: 0.13, blue: 0.15) }.clipShape(RoundedRectangle(cornerRadius: 6)) }
             VStack(spacing: 8) {
                 HStack(spacing: 3) { ForEach(0..<3, id: \.self) { _ in Circle().fill(Color.gray.opacity(0.45)).frame(width: 4, height: 4) }; Spacer() }
                 HStack(spacing: 5) {
                     ForEach(0..<3, id: \.self) { index in
-                        VStack(spacing: 0) { Color.orange.opacity(index == 1 ? 0.5 : 0.85).frame(height: 9); (mode == .dark || (mode == .system && index > 0) ? Color.white.opacity(0.13) : Color.white).frame(height: 27) }.cornerRadius(3)
+                        VStack(spacing: 0) {
+                            Color(nsColor: preferences.accentPalette.color(isDark: mode == .dark || (mode == .system && index > 0))).opacity(index == 1 ? 0.5 : 0.85).frame(height: 9)
+                            (mode == .dark || (mode == .system && index > 0) ? Color.white.opacity(0.13) : Color.white).frame(height: 27)
+                        }.cornerRadius(3)
                     }
                 }
             }.padding(9)

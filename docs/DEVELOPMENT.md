@@ -74,9 +74,9 @@ CLIPNEST_SIGN_IDENTITY='你的实际签名身份名称' ./build.sh ./dist/ClipNe
 ./test-paste.sh
 ```
 
-1.2.0 的检查结果：102 项核心检查、26 项直接粘贴状态检查通过。
+1.3.0 已通过 123 项核心检查；26 项直接粘贴状态检查为此前版本的通过记录，本次没有修改直接粘贴逻辑。
 
-核心检查覆盖 SQLite 持久化、内容去重、Unicode、收藏与分类、数量裁剪、暂停与应用排除、隐私标记、文字/链接/图片/多文件捕获和恢复、图片文件预览与缓存、快捷键冲突及偏好保存、登录项模拟状态、面板防误触、主题偏好迁移、过期边界、月末与闰年、最后复制时间、清理服务启停及收藏分类保护。
+核心检查覆盖 SQLite 持久化、内容去重、Unicode、收藏与分类、数量裁剪、暂停与应用排除、隐私标记、文字/链接/图片/多文件捕获和恢复、图片文件预览与缓存、快捷键冲突及偏好保存、登录项模拟状态、面板防误触、主题偏好迁移、过期边界、月末与闰年、最后复制时间、清理服务启停及收藏分类保护。新增强调色偏好迁移、六色持久化、无效值回退、设置相互独立，以及浅色和深色卡片上的文字对比度检查。
 
 直接粘贴检查使用模拟环境覆盖目标切换、等待焦点、修饰键释放、菜单与权限变化、超时取消，以及微信图片按键路径，验证不提前发送、不重复发送和不误粘贴到其他目标。
 
@@ -107,3 +107,20 @@ xcrun swift Resources/GenerateIcon.swift .build/icon-renders
 ```
 
 脚本生成 16、32、64、128、256、512 和 1024 像素 PNG；使用这些尺寸组成标准 `.iconset` 后，可通过 macOS 的 `iconutil -c icns` 生成 ICNS。打包完成后重新运行 `build.sh`，确保更新应用签名。
+
+## 制作 DMG 安装包
+
+应用的最终安装包使用 DMG，源码使用 ZIP。`package-dmg.sh` 读取应用版本，生成 1x / 2x 的黑白剪贴卡片背景，设置真实的应用与“应用程序”拖拽入口，再检查磁盘映像校验和。背景源代码为 `Resources/GenerateDMGBackground.swift`，窗口与图标位置在 `Scripts/dmg-settings.py`。
+
+打包需要 Python 3.9 或更新版本，以及仅在构建时使用的 dmgbuild、ds-store 和 mac-alias；它们不会成为应用的运行依赖。
+
+```sh
+python3 -m venv .dmg-env
+.dmg-env/bin/python -m pip install -r Scripts/requirements-dmg.txt
+./build.sh ./dist/ClipNest.app
+CLIPNEST_DMG_PYTHON="$PWD/.dmg-env/bin/python" ./package-dmg.sh ./dist/ClipNest.app ./dist/ClipNest-1.3.0-arm64.dmg
+```
+
+脚本使用 dmgbuild 的构建回调，并通过 Foundation 原生接口校准背景书签的卷 URL 和标志，兼容中文卷名。只复制公开的卷元数据，不将本机用户名、映像路径或沙盒令牌写入发布书签。打包过程需要 macOS 允许挂载临时磁盘映像，运行结束后自动卸载。
+
+修改界面文案与卡片布局时，请保留真实 Finder 图标的空白区域，并同步调整 `icon_locations`。请实际双击 DMG 检查，而不是只检查背景图片。
