@@ -131,6 +131,58 @@ struct Clip: Identifiable {
     }
 }
 
+enum BatchPasteError: LocalizedError, Equatable {
+    case noSelection, missingItem, unsupportedItem, emptyItem, tooLarge
+    var errorDescription: String? {
+        switch self {
+        case .noSelection: return "请先勾选要一起粘贴的文字或链接。"
+        case .missingItem: return "部分所选记录已不存在，请清空选择后重新勾选。"
+        case .unsupportedItem: return "批量拼接仅支持文字和链接，不能包含图片或文件。"
+        case .emptyItem: return "所选内容中有空白记录，请重新选择。"
+        case .tooLarge: return "拼接结果超过 1 MB，请减少选择的记录。"
+        }
+    }
+}
+
+struct BatchPasteSelection {
+    static let byteLimit = 1024 * 1024
+    private(set) var isActive = false
+    private(set) var orderedIDs: [String] = []
+    static func canSelect(_ clip: Clip) -> Bool {
+        (clip.kind == .text || clip.kind == .link) && !clip.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    mutating func start() { isActive = true; orderedIDs = [] }
+    mutating func stop() { isActive = false; orderedIDs = [] }
+    mutating func clear() { orderedIDs = [] }
+    mutating func toggle(_ clip: Clip) {
+        guard isActive, Self.canSelect(clip) else { return }
+        if let index = orderedIDs.firstIndex(of: clip.id) { orderedIDs.remove(at: index) }
+        else { orderedIDs.append(clip.id) }
+    }
+    mutating func selectAll(_ clips: [Clip]) {
+        guard isActive else { return }
+        for clip in clips where Self.canSelect(clip) && !orderedIDs.contains(clip.id) { orderedIDs.append(clip.id) }
+    }
+    func order(for id: String) -> Int? { orderedIDs.firstIndex(of: id).map { $0 + 1 } }
+    func joinedText(from clips: [Clip]) throws -> String {
+        guard !orderedIDs.isEmpty else { throw BatchPasteError.noSelection }
+        var byID: [String: Clip] = [:]
+        for clip in clips { byID[clip.id] = clip }
+        var parts: [String] = []
+        var bytes = 0
+        for id in orderedIDs {
+            guard let clip = byID[id] else { throw BatchPasteError.missingItem }
+            guard clip.kind == .text || clip.kind == .link else { throw BatchPasteError.unsupportedItem }
+            let text = clip.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { throw BatchPasteError.emptyItem }
+            bytes += text.utf8.count + (parts.isEmpty ? 0 : 1)
+            guard bytes <= Self.byteLimit else { throw BatchPasteError.tooLarge }
+            parts.append(text)
+        }
+        return parts.joined(separator: " ")
+    }
+}
+
 struct Board: Identifiable { let id: String; let name: String }
 
 enum ClipFilter: Hashable { case history, starred, board(String), kind(ClipKind) }

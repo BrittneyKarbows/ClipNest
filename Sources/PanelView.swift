@@ -47,15 +47,21 @@ struct PanelView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(spacing: 14) {
                             ForEach(Array(clips.enumerated()), id: \.element.id) { index, clip in
-                                ClipCard(clip: clip, index: index, selected: state.selectedID == clip.id, doubleClickToPaste: preferences.doubleClickToPaste, select: { state.selectedID = clip.id; searchFocused = false }, paste: { controller.paste(clip) }, star: { store.toggleStar(clip) })
+                                ClipCard(clip: clip, index: index, selected: state.batch.isActive ? state.batch.order(for: clip.id) != nil : state.selectedID == clip.id, batchMode: state.batch.isActive, batchOrder: state.batch.order(for: clip.id), keyboardFocused: state.selectedID == clip.id, doubleClickToPaste: preferences.doubleClickToPaste, select: { controller.select(clip); searchFocused = false }, paste: { controller.paste(clip) }, star: { store.toggleStar(clip) })
                                     .id(clip.id)
                                     .contextMenu {
+                                        if state.batch.isActive {
+                                            Button(state.batch.order(for: clip.id) == nil ? "选择此条" : "取消选择此条") { controller.select(clip) }.disabled(!BatchPasteSelection.canSelect(clip))
+                                            Button("复制所选") { controller.pasteBatch(copyOnly: true) }.disabled(state.batch.orderedIDs.isEmpty)
+                                            Button("粘贴所选") { controller.pasteBatch() }.disabled(state.batch.orderedIDs.isEmpty)
+                                        } else {
                                         Button("粘贴到原应用") { controller.paste(clip) }
                                         Button("复制到剪贴板") { controller.paste(clip, copyOnly: true) }
                                         Button(clip.starred ? "取消收藏" : "加入收藏") { store.toggleStar(clip) }
                                         if !store.boards.isEmpty { Menu("收藏分类") { ForEach(store.boards) { board in Button((clip.boards.contains(board.id) ? "✓ " : "") + board.name) { store.toggleBoard(clip, board: board) } } } }
                                         Divider()
                                         Button("删除记录", role: .destructive) { store.delete(clip) }
+                                        }
                                     }
                             }
                         }.padding(.horizontal, 24).padding(.vertical, 16)
@@ -70,8 +76,8 @@ struct PanelView: View {
         .foregroundColor(.ink).background(Color.paper).tint(.accent).accentColor(.accent)
         .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(Color.edge, lineWidth: 1))
-        .onChange(of: state.focusRequest) { _ in searchFocused = true }
-        .onAppear { searchFocused = true; state.selectedID = clips.first?.id }
+        .onChange(of: state.focusRequest) { _ in searchFocused = !state.batch.isActive }
+        .onAppear { searchFocused = !state.batch.isActive; state.selectedID = clips.first?.id }
         .alert("存储遇到问题", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("好") { store.error = nil } } message: { Text(store.error ?? "") }
     }
     private var header: some View {
@@ -81,6 +87,11 @@ struct PanelView: View {
             Text("剪藏").font(.system(size: 21, weight: .semibold))
             Text("随手复制，好好收藏").font(.system(size: 11)).foregroundColor(.secondary).padding(.leading, 4)
             Spacer()
+            Button { searchFocused = false; controller.toggleBatchMode() } label: {
+                Label(state.batch.isActive ? "取消多选" : "多选", systemImage: "checkmark.circle")
+                    .font(.system(size: 11, weight: .medium)).padding(.horizontal, 10).frame(height: 29)
+                    .background(state.batch.isActive ? Color.accent.opacity(0.12) : Color.field).cornerRadius(7)
+            }.buttonStyle(.plain).accessibilityIdentifier("batch-mode").help("选择多条文字或链接，按点击顺序用空格拼接")
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass").foregroundColor(.secondary)
                 TextField("搜索内容或来源应用…", text: $state.query).textFieldStyle(.plain).focused($searchFocused)
@@ -107,6 +118,25 @@ struct PanelView: View {
         }
     }
     private var footer: some View {
+        Group {
+            if state.batch.isActive { batchFooter } else { singleFooter }
+        }
+    }
+    private var batchFooter: some View {
+        HStack(spacing: 10) {
+            Text("已选 \(state.batch.orderedIDs.count) 条").foregroundColor(.ink).fontWeight(.medium)
+                .accessibilityIdentifier("batch-count")
+                .help((try? state.batch.joinedText(from: store.clips)).map { String($0.prefix(500)) } ?? "点击卡片，按选择顺序拼接")
+            Button("全选文字") { state.batch.selectAll(clips); state.message = nil }.buttonStyle(.plain).help("选中当前搜索或分类下的文字和链接，保留已有选择顺序")
+            Button("清空") { state.batch.clear(); state.message = nil }.buttonStyle(.plain).disabled(state.batch.orderedIDs.isEmpty)
+            Text(state.message ?? "空格拼接 · 点击顺序").lineLimit(1).help(state.message ?? "搜索和切换分类会保留已选内容；图片和文件不参与拼接")
+            Spacer(minLength: 4)
+            Text("↩ 粘贴 · ⇧↩ 复制 · esc 退出").lineLimit(1)
+            Button("复制所选") { controller.pasteBatch(copyOnly: true) }.accessibilityIdentifier("batch-copy").disabled(state.batch.orderedIDs.isEmpty)
+            Button("粘贴所选") { controller.pasteBatch() }.buttonStyle(.borderedProminent).foregroundColor(.card).accessibilityIdentifier("batch-paste").disabled(state.batch.orderedIDs.isEmpty)
+        }.controlSize(.small).font(.system(size: 10)).foregroundColor(.secondary).padding(.horizontal, 25).frame(height: 32).background(Color.chrome)
+    }
+    private var singleFooter: some View {
         HStack(spacing: 7) {
             Image(systemName: preferences.paused ? "pause.circle.fill" : "circle.fill")
                 .font(.system(size: preferences.paused ? 9 : 5)).foregroundColor(.secondary)
@@ -150,6 +180,9 @@ struct ClipCard: View {
     let clip: Clip
     let index: Int
     let selected: Bool
+    let batchMode: Bool
+    let batchOrder: Int?
+    let keyboardFocused: Bool
     let doubleClickToPaste: Bool
     let select: () -> Void
     let paste: () -> Void
@@ -160,6 +193,14 @@ struct ClipCard: View {
         let headerText = Color(nsColor: appearance.palette.foreground)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
+                if batchMode {
+                    ZStack {
+                        Circle().fill(Color.white.opacity(batchOrder == nil ? 0.16 : 0.95))
+                        Circle().strokeBorder(headerText.opacity(0.7), lineWidth: 1)
+                        if let batchOrder { Text("\(batchOrder)").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundColor(.black) }
+                    }.frame(width: 21, height: 21).padding(.leading, 12)
+                        .accessibilityLabel(batchOrder.map { "已选第 \($0) 项" } ?? "未选择")
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Label(clip.kindLabel, systemImage: clip.hasImagePreview ? "photo" : clip.kind.symbol).font(.system(size: 11, weight: .semibold))
                     Text(clip.updated, style: .relative).font(.system(size: 9)).foregroundColor(headerText.opacity(0.85)).lineLimit(1)
@@ -187,19 +228,25 @@ struct ClipCard: View {
             HStack(spacing: 5) {
                 Text(clip.source).lineLimit(1)
                 Spacer(minLength: 3)
+                if !batchMode {
                 Button(action: paste) { Image(systemName: "arrow.turn.down.left").font(.system(size: 10, weight: .semibold)).foregroundColor(selected ? .accent : .ink.opacity(0.45)).frame(width: 22, height: 24) }.buttonStyle(.plain).help("粘贴到目标应用（回车）")
                 Button(action: star) { Image(systemName: clip.starred ? "star.fill" : "star").font(.system(size: 11)).foregroundColor(clip.starred ? .accent : .ink.opacity(0.4)).frame(width: 20, height: 24) }.buttonStyle(.plain).help(clip.starred ? "取消收藏" : "收藏")
+                }
                 if index < 9 { Text("⌘\(index + 1)").font(.system(size: 9, design: .monospaced)).padding(.horizontal, 4).padding(.vertical, 2).background(Color.ink.opacity(0.05)).cornerRadius(3) }
             }.font(.system(size: 9)).foregroundColor(.secondary).padding(.horizontal, 12).frame(height: 30)
         }
         .frame(width: 218, height: 213).background(Color.card)
         .clipShape(RoundedRectangle(cornerRadius: 11))
         .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(selected ? Color.accent : Color.ink.opacity(0.09), lineWidth: selected ? 2 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(batchMode && keyboardFocused && !selected ? Color.accent.opacity(0.6) : .clear, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
         .shadow(color: .black.opacity(0.035), radius: 4, y: 2)
+        .opacity(batchMode && !BatchPasteSelection.canSelect(clip) ? 0.45 : 1)
         .contentShape(RoundedRectangle(cornerRadius: 11))
         .onTapGesture(perform: select)
-        .simultaneousGesture(TapGesture(count: 2).onEnded { if doubleClickToPaste { paste() } })
-        .help(doubleClickToPaste ? "单击选择，双击粘贴；右键管理记录" : "单击选择，按回车或点击卡片底部箭头粘贴；右键管理记录")
+        .simultaneousGesture(TapGesture(count: 2).onEnded { if !batchMode && doubleClickToPaste { paste() } })
+        .help(batchMode ? (BatchPasteSelection.canSelect(clip) ? "单击勾选或取消，按点击顺序用空格拼接" : "多选拼接仅支持文字和链接") : (doubleClickToPaste ? "单击选择，双击粘贴；右键管理记录" : "单击选择，按回车或点击卡片底部箭头粘贴；右键管理记录"))
         .accessibilityElement(children: .contain).accessibilityLabel("\(clip.kindLabel)，\(clip.source)，\(String(clip.title.prefix(80)))")
+        .accessibilityIdentifier("clip-\(clip.id)")
+        .accessibilityValue(batchMode ? (batchOrder.map { "已选第 \($0) 项" } ?? "未选择") : (selected ? "当前卡片" : ""))
     }
 }

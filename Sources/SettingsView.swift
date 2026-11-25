@@ -66,7 +66,7 @@ struct SettingsView: View {
     @State private var retentionConfirmation = false
     @State private var pendingRetention = HistoryRetention.forever
     @State private var pendingExpirationCount = 0
-    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.3.0" }
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.4.0" }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -230,6 +230,11 @@ struct SettingsView: View {
                 Divider()
                 HStack { Text("仅复制到剪贴板"); Spacer(); Text("⇧ ↩").font(.system(.body, design: .monospaced)) }.font(.system(size: 12))
                 HStack { Text("快速粘贴前九条"); Spacer(); Text("⌘1–9").font(.system(.body, design: .monospaced)) }.font(.system(size: 12))
+            }
+            SettingsCard("批量粘贴") {
+                Text("在主面板点击「多选」，勾选文字或链接后，按点击顺序用一个空格拼接。搜索或切换分类会保留选择；每条内容仅去掉首尾空白，保留内部格式。").font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+                Text("回车：粘贴所选　⇧↩：复制所选　Esc：退出多选\n← → 移动焦点　空格 / ⌘1–9：勾选　⌘A：全选当前结果（搜索框外）").font(.system(size: 11)).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text("图片和文件不参与拼接。最多拼接 1 MB 文字，成功粘贴后自动清空选择。").font(.system(size: 11)).foregroundColor(.secondary)
             }
             pastePermissions
         }

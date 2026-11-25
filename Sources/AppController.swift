@@ -18,6 +18,7 @@ final class PanelState: ObservableObject {
     @Published var selectedID: String?
     @Published var message: String?
     @Published var focusRequest = UUID()
+    @Published var batch = BatchPasteSelection()
     func visible(_ store: ClipStore) -> [Clip] {
         store.clips.filter { clip in
             let matches: Bool
@@ -78,7 +79,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.contentView = PanelHostingView(rootView: PanelView(store: store, state: state, controller: self))
         hotKey.onPress = { [weak self] in guard let self, !self.isRecordingShortcut else { return }; self.toggle() }
         restoreShortcut()
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in self?.handleKey(event) ?? event }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }; return self.handleKey(event)
+        }
         outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             guard let self, let panel = self.panel else { return }
             let statusFrame = self.status.button.flatMap { button in button.window?.convertToScreen(button.convert(button.bounds, to: nil)) }
@@ -159,15 +162,46 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     func hide() { panel?.orderOut(nil) }
-    func paste(_ clip: Clip, copyOnly: Bool = false) {
+    func toggleBatchMode() {
+        state.message = nil
+        if state.batch.isActive { state.batch.stop(); state.focusRequest = UUID() }
+        else {
+            state.batch.start()
+            let clips = state.visible(store)
+            if !clips.contains(where: { $0.id == state.selectedID && BatchPasteSelection.canSelect($0) }) {
+                state.selectedID = clips.first(where: BatchPasteSelection.canSelect)?.id
+            }
+            panel.makeFirstResponder(panel.contentView)
+        }
+    }
+    func select(_ clip: Clip) {
+        state.selectedID = clip.id
+        if state.batch.isActive {
+            guard BatchPasteSelection.canSelect(clip) else { state.message = "多选拼接仅支持文字和链接。"; return }
+            state.batch.toggle(clip); state.message = nil
+        }
+    }
+    func pasteBatch(copyOnly: Bool = false) {
+        do {
+            let joined = try state.batch.joinedText(from: store.clips)
+            let merged = Clip.make(kind: .text, text: joined, source: "剪藏", bundleID: Bundle.main.bundleIdentifier ?? "")
+            paste(merged, copyOnly: copyOnly, batchCount: state.batch.orderedIDs.count)
+        } catch { state.message = error.localizedDescription }
+    }
+    func paste(_ clip: Clip, copyOnly: Bool = false, batchCount: Int? = nil) {
         guard clipboard.copy(clip) else { state.message = "无法复制这条记录，请重试。"; return }
-        if copyOnly { state.message = "已复制，按 ⌘V 即可粘贴"; return }
+        if copyOnly {
+            state.message = batchCount.map { "已用空格拼接并复制 \($0) 条，按 ⌘V 即可粘贴" } ?? "已复制，按 ⌘V 即可粘贴"
+            return
+        }
         hide()
         let keyboardImagePaste = clip.hasImagePreview && ImagePasteCompatibility.isWeChat(target?.bundleID)
         pasteCoordinator.paste(to: target, preferKeyboard: keyboardImagePaste) { [weak self] result in
             guard let self else { return }
             switch result {
-            case .success: self.state.message = nil
+            case .success:
+                if batchCount != nil { self.state.batch.stop() }
+                self.state.message = nil
             case .failure(let error): self.show(preservingTarget: true); self.state.message = error.rawValue
             }
         }
@@ -175,17 +209,39 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func handleKey(_ event: NSEvent) -> NSEvent? {
         guard !isRecordingShortcut else { return event }
         guard panel?.isKeyWindow == true else { return event }
-        if event.keyCode == 53 { hide(); return nil }
+        if event.keyCode == 53 {
+            if state.batch.isActive { toggleBatchMode() } else { hide() }
+            return nil
+        }
         if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "," { showSettings(); return nil }
         let clips = state.visible(store)
-        if event.modifierFlags.contains(.command), let chars = event.charactersIgnoringModifiers, let number = Int(chars), (1...9).contains(number), clips.indices.contains(number - 1) { paste(clips[number - 1]); return nil }
-        if event.keyCode == 36, let clip = clips.first(where: { $0.id == state.selectedID }) ?? clips.first { paste(clip, copyOnly: event.modifierFlags.contains(.shift)); return nil }
+        if event.modifierFlags.contains(.command), let chars = event.charactersIgnoringModifiers, let number = Int(chars), (1...9).contains(number), clips.indices.contains(number - 1) {
+            if state.batch.isActive { select(clips[number - 1]); panel.makeFirstResponder(panel.contentView) }
+            else { paste(clips[number - 1]) }
+            return nil
+        }
+        if state.batch.isActive, !(panel.firstResponder is NSTextView) {
+            if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers?.lowercased() == "a" {
+                state.batch.selectAll(clips); state.message = nil; return nil
+            }
+            if event.keyCode == 49, event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
+               let clip = clips.first(where: { $0.id == state.selectedID }) { select(clip); return nil }
+        }
+        if [36, 76].contains(event.keyCode) {
+            if state.batch.isActive { pasteBatch(copyOnly: event.modifierFlags.contains(.shift)) }
+            else if let clip = clips.first(where: { $0.id == state.selectedID }) ?? clips.first { paste(clip, copyOnly: event.modifierFlags.contains(.shift)) }
+            return nil
+        }
         if [123, 124].contains(event.keyCode), !(panel.firstResponder is NSTextView) {
             let index = clips.firstIndex(where: { $0.id == state.selectedID }) ?? 0
             if !clips.isEmpty { state.selectedID = clips[max(0, min(clips.count - 1, index + (event.keyCode == 124 ? 1 : -1)))].id }; return nil
         }
         if event.keyCode == 125 { panel.makeFirstResponder(panel.contentView); if state.selectedID == nil { state.selectedID = clips.first?.id }; return nil }
-        if event.modifierFlags.contains(.command), event.keyCode == 51, let clip = clips.first(where: { $0.id == state.selectedID }) { store.delete(clip); state.selectedID = state.visible(store).first?.id; return nil }
+        if event.modifierFlags.contains(.command), event.keyCode == 51, let clip = clips.first(where: { $0.id == state.selectedID }) {
+            if state.batch.isActive { state.message = "请退出多选后再删除记录。" }
+            else { store.delete(clip); state.selectedID = state.visible(store).first?.id }
+            return nil
+        }
         return event
     }
     func showSettings() {

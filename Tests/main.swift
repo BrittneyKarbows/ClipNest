@@ -301,4 +301,73 @@ expect(released.register(firstKey), "Changing shortcut releases the previous key
 released.suspend(); registration.suspend()
 expect(!registration.isRegistered && registration.register(secondKey), "Recording cancellation can restore suspended shortcut")
 registration.suspend()
+
+// Batch selection is ephemeral and never changes the source records or their order.
+func expectBatchError(_ expected: BatchPasteError, _ message: String, _ action: () throws -> String) {
+    do { _ = try action(); expect(false, message) }
+    catch { expect((error as? BatchPasteError) == expected, message) }
+}
+let orderA = Clip.make(kind: .text, text: " \t000123\r\n", source: "订单A")
+let orderB = Clip.make(kind: .text, text: "SF456", source: "订单B")
+let orderC = Clip.make(kind: .link, text: "https://example.com/AB789", source: "Safari")
+let orderImage = Clip.make(kind: .image, text: "screenshot.png", data: pngRepresentation, source: "截图")
+let orderFile = Clip.make(kind: .files, text: "file:///tmp/number.png", source: "Finder")
+let blankOrder = Clip.make(kind: .text, text: " \t\n", source: "空白")
+let orders = [orderA, orderB, orderC, orderImage, orderFile, blankOrder]
+var batch = BatchPasteSelection()
+batch.toggle(orderA); batch.selectAll(orders)
+expect(!batch.isActive && batch.orderedIDs.isEmpty, "Inactive batch cannot capture selections")
+batch.start()
+expectBatchError(.noSelection, "Empty batch reports an actionable error") { try batch.joinedText(from: orders) }
+batch.toggle(orderB); batch.toggle(orderA); batch.toggle(orderC)
+let joinedOrders = try batch.joinedText(from: orders)
+expect(joinedOrders == "SF456 000123 https://example.com/AB789", "Batch uses click order, single spaces and preserves leading zeros")
+expect(batch.order(for: orderB.id) == 1 && batch.order(for: orderA.id) == 2 && batch.order(for: orderC.id) == 3, "Selected cards expose consecutive selection numbers")
+let reversedOrders = try batch.joinedText(from: orders.reversed())
+expect(reversedOrders == joinedOrders, "Store reordering cannot change batch paste order")
+batch.toggle(orderA)
+expect(batch.orderedIDs == [orderB.id, orderC.id] && batch.order(for: orderC.id) == 2, "Deselecting a record closes numbering gaps")
+batch.toggle(orderA)
+expect(batch.orderedIDs == [orderB.id, orderC.id, orderA.id], "Selecting again appends the record to the end")
+batch.toggle(orderImage); batch.toggle(orderFile); batch.toggle(blankOrder)
+expect(batch.orderedIDs.count == 3, "Images, file names and blank text cannot enter a batch")
+batch.clear(); batch.toggle(orderC); batch.selectAll(orders); batch.selectAll(orders)
+expect(batch.orderedIDs == [orderC.id, orderA.id, orderB.id], "Select all appends eligible visible records without duplicates or losing earlier order")
+let hiddenResult = try batch.joinedText(from: orders)
+expect(hiddenResult == "https://example.com/AB789 000123 SF456", "Hidden selections remain available when the visible search result changes")
+expectBatchError(.missingItem, "Missing selected record fails instead of silently dropping an order") { try batch.joinedText(from: [orderA, orderC]) }
+let changedOrder = Clip(id: orderA.id, kind: .files, text: orderA.text, data: nil, source: orderA.source, bundleID: orderA.bundleID, created: orderA.created, updated: orderA.updated, starred: false, boards: [])
+expectBatchError(.unsupportedItem, "Changed file representation cannot be concatenated as text") { try batch.joinedText(from: [changedOrder, orderB, orderC]) }
+let blankChangedOrder = Clip(id: orderA.id, kind: .text, text: " \n", data: nil, source: orderA.source, bundleID: orderA.bundleID, created: orderA.created, updated: orderA.updated, starred: false, boards: [])
+expectBatchError(.emptyItem, "Selected text that becomes blank fails explicitly") { try batch.joinedText(from: [blankChangedOrder, orderB, orderC]) }
+let formattedOrder = Clip.make(kind: .text, text: "\u{3000}AB  CD\nEF\t", source: "格式")
+batch.clear(); batch.toggle(formattedOrder)
+let formattedJoined = try batch.joinedText(from: [formattedOrder])
+expect(formattedJoined == "AB  CD\nEF", "Only outside whitespace is trimmed; internal spaces and lines are preserved")
+let largeOrder = Clip.make(kind: .text, text: String(repeating: "x", count: BatchPasteSelection.byteLimit - 2), source: "大文本")
+let lastOrder = Clip.make(kind: .text, text: "y", source: "尾项")
+batch.clear(); batch.toggle(largeOrder); batch.toggle(lastOrder)
+let boundaryJoined = try batch.joinedText(from: [largeOrder, lastOrder])
+expect(boundaryJoined.utf8.count == BatchPasteSelection.byteLimit, "One MiB boundary includes the inserted separator")
+let oversizedOrder = Clip(id: lastOrder.id, kind: .text, text: "yy", data: nil, source: lastOrder.source, bundleID: lastOrder.bundleID, created: lastOrder.created, updated: lastOrder.updated, starred: false, boards: [])
+expectBatchError(.tooLarge, "Oversized joined text is rejected before clipboard mutation") { try batch.joinedText(from: [largeOrder, oversizedOrder]) }
+let unicodeOrder = Clip.make(kind: .text, text: String(repeating: "单", count: BatchPasteSelection.byteLimit / 3 + 1), source: "中文")
+batch.clear(); batch.toggle(unicodeOrder)
+expectBatchError(.tooLarge, "Batch limit uses UTF-8 bytes for multibyte order content") { try batch.joinedText(from: [unicodeOrder]) }
+batch.clear(); batch.toggle(orderB); batch.toggle(orderA)
+let beforeBatchHistory = store.clips.map { $0.id }
+let mergedOrder = Clip.make(kind: .text, text: try batch.joinedText(from: orders), source: "剪藏")
+expect(service.copy(mergedOrder) && pb.string(forType: .string) == "SF456 000123", "Batch writes exact joined text to the isolated clipboard in one operation")
+expect(pb.data(forType: .png) == nil && pb.data(forType: .tiff) == nil && pb.string(forType: .fileURL) == nil, "Batch text copy clears stale image and file representations")
+service.poll()
+expect(store.clips.map { $0.id } == beforeBatchHistory, "Batch copy does not add an artificial merged history record")
+expect(orders[0].text == " \t000123\r\n" && orders[0].source == "订单A" && !orders[0].starred && orders[0].boards.isEmpty, "Composing a batch preserves original text and metadata")
+let changeBeforeFailure = pb.changeCount
+expectBatchError(.missingItem, "Incomplete batch never overwrites the clipboard") { try batch.joinedText(from: [orderB]) }
+expect(pb.changeCount == changeBeforeFailure && pb.string(forType: .string) == "SF456 000123", "Previous clipboard survives composition failure")
+batch.stop()
+expect(!batch.isActive && batch.orderedIDs.isEmpty, "Exiting or completing batch clears ephemeral selection")
+batch.start(); batch.toggle(orderA); batch.start()
+expect(batch.isActive && batch.orderedIDs.isEmpty, "A new batch starts with no stale selections")
+
 print("\(checks) checks passed. All tests use an isolated database and pasteboard.")

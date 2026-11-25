@@ -13,7 +13,7 @@
 ## 上传源码
 
 1. 使用 GitHub 创建 `ClipNest` 仓库。若准备推送现成目录，可先创建空仓库，避免重复生成 README。
-2. 解压 `ClipNest-1.3.0-source.zip`，进入其中的 `ClipNest` 文件夹。
+2. 解压 `ClipNest-1.4.0-source.zip`，进入其中的 `ClipNest` 文件夹。
 3. 将此文件夹中的内容作为仓库根目录：README、Sources、Resources、Tests、Xcode 工程、脚本及 docs。
 4. 使用 GitHub Desktop、Git 或网页上传。不要把外层 `ClipNest` 文件夹再次套在仓库根目录，也不要把安装包当作源码提交。
 
@@ -22,7 +22,7 @@
 ```sh
 git init
 git add .
-git commit -m "Release ClipNest 1.3.0"
+git commit -m "Release ClipNest 1.4.0"
 git branch -M main
 ```
 
@@ -36,14 +36,14 @@ git branch -M main
 
 | 项目 | 内容 |
 | --- | --- |
-| Tag | `v1.3.0` |
-| Title | `剪藏 ClipNest 1.3.0` |
-| Description | 粘贴 `docs/RELEASE-v1.3.0.md` 的内容 |
+| Tag | `v1.4.0` |
+| Title | `剪藏 ClipNest 1.4.0` |
+| Description | 粘贴 `docs/RELEASE-v1.4.0.md` 的内容 |
 | Attachments | 安装包、源码包、`SHA256SUMS.txt` |
 
-将 `ClipNest-1.3.0-arm64.dmg`、`ClipNest-1.3.0-source.zip` 和 `SHA256SUMS.txt` 附加到 Release。GitHub 也会生成仓库快照的 Source code 下载，附加源码包可方便用户直接取得本次整理的完整材料。
+将 `ClipNest-1.4.0-arm64.dmg`、`ClipNest-1.4.0-source.zip` 和 `SHA256SUMS.txt` 附加到 Release。GitHub 也会生成仓库快照的 Source code 下载，附加源码包可方便用户直接取得本次整理的完整材料。
 
-本次交付的校验文件只列出DMG 安装包与源码 ZIP；最外层 `ClipNest-1.3.0-GitHub-Publish.zip` 是给维护者的一站式材料包，不必重复附加到 Release。
+本次交付的校验文件只列出DMG 安装包与源码 ZIP；最外层 `ClipNest-1.4.0-GitHub-Publish.zip` 是给维护者的一站式材料包，不必重复附加到 Release。
 
 发布前可在这三个文件所在目录核验：
 

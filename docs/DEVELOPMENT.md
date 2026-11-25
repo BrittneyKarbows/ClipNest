@@ -74,7 +74,7 @@ CLIPNEST_SIGN_IDENTITY='你的实际签名身份名称' ./build.sh ./dist/ClipNe
 ./test-paste.sh
 ```
 
-1.3.0 已通过 123 项核心检查；26 项直接粘贴状态检查为此前版本的通过记录，本次没有修改直接粘贴逻辑。
+1.4.0 已通过 148 项核心检查；26 项直接粘贴状态检查为此前版本的通过记录，本次没有修改直接粘贴逻辑。
 
 核心检查覆盖 SQLite 持久化、内容去重、Unicode、收藏与分类、数量裁剪、暂停与应用排除、隐私标记、文字/链接/图片/多文件捕获和恢复、图片文件预览与缓存、快捷键冲突及偏好保存、登录项模拟状态、面板防误触、主题偏好迁移、过期边界、月末与闰年、最后复制时间、清理服务启停及收藏分类保护。新增强调色偏好迁移、六色持久化、无效值回退、设置相互独立，以及浅色和深色卡片上的文字对比度检查。
 
@@ -93,6 +93,14 @@ CLIPNEST_SIGN_IDENTITY='你的实际签名身份名称' ./build.sh ./dist/ClipNe
 ```
 
 演示模式使用临时数据库，不监听系统剪贴板，不向正式历史写入示例内容。请先退出正在运行的正常副本，避免同时启动多个实例造成快捷键冲突。
+
+## 批量粘贴实现
+
+`Models.swift` 中的 `BatchPasteSelection` 只保存当前会话内的有序记录 ID，勾选顺序独立于历史和搜索结果排序。合并时重新查找完整历史，验证每条仍存在且为非空文字或链接，累计 UTF-8 字节（含分隔符）后再返回拼接结果。
+
+`AppController.pasteBatch` 生成临时纯文字记录，调用现有复制与目标应用粘贴流程。合并失败不会写剪贴板；复制成功后不会新增历史；直接粘贴失败保留选择供重试。`PanelView` 展示编号、已选计数与两种操作，并在多选时隐藏单条粘贴与删除入口。键盘监视器正确吞掉已处理事件。
+
+新增检查覆盖顺序、去选重选、批量全选、前导零、首尾空白、多字节限制、内容缺失和单次隔离剪贴板写入。跨应用能否接收粘贴仍取决于当前权限与目标输入框。
 
 ## 发布
 
@@ -118,7 +126,7 @@ xcrun swift Resources/GenerateIcon.swift .build/icon-renders
 python3 -m venv .dmg-env
 .dmg-env/bin/python -m pip install -r Scripts/requirements-dmg.txt
 ./build.sh ./dist/ClipNest.app
-CLIPNEST_DMG_PYTHON="$PWD/.dmg-env/bin/python" ./package-dmg.sh ./dist/ClipNest.app ./dist/ClipNest-1.3.0-arm64.dmg
+CLIPNEST_DMG_PYTHON="$PWD/.dmg-env/bin/python" ./package-dmg.sh ./dist/ClipNest.app ./dist/ClipNest-1.4.0-arm64.dmg
 ```
 
 脚本使用 dmgbuild 的构建回调，并通过 Foundation 原生接口校准背景书签的卷 URL 和标志，兼容中文卷名。只复制公开的卷元数据，不将本机用户名、映像路径或沙盒令牌写入发布书签。打包过程需要 macOS 允许挂载临时磁盘映像，运行结束后自动卸载。
